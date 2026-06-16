@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Paragon Bridge — POC</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+/* ── Design Tokens (from ui-design-libs) ─────────────────── */
+:root {
+  /* Foundation: Colors */
+  --c-white:        #FFFFFF;
+  --c-blue-050:     #EDF5FF;
+  --c-blue-100:     #DEEAF5;
+  --c-blue-700:     #4274CA;
+  --c-blue-800:     #33558E;
+  --c-blue-900:     #2B4063;
+  --c-red-600:      #BE202E;
+  --c-gray-050:     #F9F9F9;
+  --c-gray-150:     #F2F2F2;
+  --c-gray-200:     #E4E4E4;
+  --c-gray-400:     #B0B0B0;
+  --c-gray-450:     #C3C3C3;
+  --c-gray-500:     #808080;
+  --c-gray-600:     #666666;
+  --c-gray-950:     #0D0D0D;
+  --c-purple-500:   #4c47c4;
+  --c-purple-700:   #393392;
+
+  /* Foundation: Typography */
+  --font:           'Noto Sans', sans-serif;
+  --fw-regular:     400;
+  --fw-semibold:    600;
+  --fs-sm:          12px;
+  --fs-md:          13px;
+  --fs-md-plus:     14px;
+  --fs-lg:          15px;
+
+  /* Foundation: Spacing */
+  --sp-xs:  0.25rem;
+  --sp-sm:  0.5rem;
+  --sp-md:  0.75rem;
+  --sp-lg:  1rem;
+
+  /* Foundation: Border radius */
+  --r-sm:   2px;
+  --r-md:   4px;
+  --r-lg:   8px;
+
+  /* Grid tokens */
+  --grid-border:    #E4E4E4;
+  --grid-header-bg: #F8F9FA;
+  --grid-header-text: #5A5A5A;
+  --grid-cell-text: #5A5A5A;
+  --grid-cell-hover: #F8F9FA;
+  --grid-cell-selected: #E7F3FF;
+  --grid-row-stripe: #FBFBFB;
+
+  /* App-level */
+  --sidebar-w: 220px;
+  --topbar-h:  52px;
+  --status-online: #22c55e;
+  --status-offline: var(--c-red-600);
+  --status-bridge: #f59e0b;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  color: var(--c-gray-950);
+  background: var(--c-gray-150);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Top Bar ──────────────────────────────────────────── */
+.topbar {
+  height: var(--topbar-h);
+  background: var(--c-blue-900);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sp-lg);
+  gap: var(--sp-md);
+  flex-shrink: 0;
+  z-index: 100;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+.topbar-logo {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--c-white);
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+.topbar-logo span.bridge-tag {
+  background: var(--c-blue-700);
+  color: var(--c-white);
+  font-size: var(--fs-sm);
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: var(--fw-regular);
+}
+.topbar-spacer { flex: 1; }
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-white);
+  transition: background 0.3s;
+}
+.status-pill.online  { background: rgba(34,197,94,0.2);  border: 1px solid rgba(34,197,94,0.4); }
+.status-pill.offline { background: rgba(190,32,46,0.25); border: 1px solid rgba(190,32,46,0.5); }
+.status-pill.bridge  { background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.4); }
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-dot.online  { background: var(--status-online);  animation: pulse-green 2s infinite; }
+.status-dot.offline { background: var(--status-offline); }
+.status-dot.bridge  { background: var(--status-bridge);  animation: pulse-amber 1.5s infinite; }
+
+@keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.4)} 50%{box-shadow:0 0 0 4px rgba(34,197,94,0)} }
+@keyframes pulse-amber { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.5)} 50%{box-shadow:0 0 0 4px rgba(245,158,11,0)} }
+
+.topbar-user {
+  display: flex; align-items: center; gap: var(--sp-sm);
+  color: var(--c-blue-100); font-size: var(--fs-sm); cursor: pointer;
+}
+.topbar-user-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--c-blue-700);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-md); font-weight: var(--fw-semibold);
+  color: var(--c-white);
+}
+.mode-toggle {
+  display: flex; align-items: center; gap: var(--sp-sm);
+  background: rgba(255,255,255,0.1);
+  border-radius: var(--r-lg);
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--c-white);
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: background 0.2s;
+}
+.mode-toggle:hover { background: rgba(255,255,255,0.18); }
+
+/* ── Layout ───────────────────────────────────────────── */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ──────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--c-white);
+  border-right: 1px solid var(--grid-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+.sidebar-section { padding: var(--sp-sm) 0; }
+.sidebar-section-label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-gray-500);
+  padding: var(--sp-sm) var(--sp-lg);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.nav-item {
+  display: flex; align-items: center; gap: var(--sp-md);
+  padding: 8px var(--sp-lg);
+  cursor: pointer;
+  font-size: var(--fs-md);
+  color: var(--c-gray-600);
+  border-left: 3px solid transparent;
+  transition: all 0.15s;
+}
+.nav-item:hover { background: var(--c-gray-050); color: var(--c-gray-950); }
+.nav-item.active {
+  background: var(--c-blue-050);
+  color: var(--c-blue-800);
+  border-left-color: var(--c-blue-700);
+  font-weight: var(--fw-semibold);
+}
+.nav-item svg { flex-shrink: 0; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--status-bridge);
+  color: var(--c-white);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: var(--fw-semibold);
+}
+.nav-badge.danger { background: var(--c-red-600); }
+
+/* ── Main Content ─────────────────────────────────────── */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+/* ── Bridge Banner ────────────────────────────────────── */
+.bridge-banner {
+  display: none;
+  align-items: center;
+  gap: var(--sp-md);
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: var(--r-lg);
+  padding: var(--sp-md) var(--sp-lg);
+  font-size: var(--fs-md);
+  color: #856404;
+  animation: slideDown 0.4s ease-out;
+}
+.bridge-banner.visible { display: flex; }
+.bridge-banner strong { font-weight: var(--fw-semibold); }
+.bridge-banner .banner-icon { font-size: 18px; flex-shrink: 0; }
+.bridge-banner .banner-close {
+  margin-left: auto; cursor: pointer; font-size: 16px; opacity: 0.6;
+}
+.bridge-banner .banner-close:hover { opacity: 1; }
+@keyframes slideDown { from { opacity:0; transform: translateY(-8px); } to { opacity:1; transform: translateY(0); } }
+
+/* ── Page Header ──────────────────────────────────────── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.page-title {
+  font-size: 18px;
+  font-weight: var(--fw-semibold);
+  color: var(--c-blue-900);
+}
+.page-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--c-gray-500);
+  margin-top: 2px;
+}
+.header-actions { display: flex; gap: var(--sp-sm); }
+
+/* ── Buttons (from button tokens) ────────────────────── */
+.btn {
+  font-family: var(--font);
+  border: none;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  padding: 4px 16px;
+  min-width: 72px;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.btn-primary { background: var(--c-blue-700); color: var(--c-white); }
+.btn-primary:hover { background: var(--c-blue-800); }
+.btn-primary:active { background: var(--c-blue-900); color: var(--c-blue-100); }
+.btn-secondary {
+  background: var(--c-white); color: var(--c-blue-800);
+  border: 1px solid var(--c-blue-800);
+}
+.btn-secondary:hover { background: var(--c-blue-050); color: var(--c-blue-900); border-color: var(--c-blue-900); }
+.btn-danger { background: #a5111e; color: var(--c-white); }
+.btn-danger:hover { background: #8b0e1a; }
+.btn-sm { padding: 2px 8px; font-size: var(--fs-sm); font-weight: var(--fw-regular); border-radius: var(--r-sm); min-width: auto; }
+.btn:disabled { background: var(--c-gray-200); color: var(--c-gray-500); cursor: not-allowed; }
+
+/* ── Summary Cards ────────────────────────────────────── */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-md);
+}
+.card {
+  background: var(--c-white);
+  border: 1px solid var(--grid-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-lg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.card-label {
+  font-size: var(--fs-sm);
+  color: var(--c-gray-500);
+  margin-bottom: 4px;
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.card-value {
+  font-size: 24px;
+  font-weight: var(--fw-semibold);
+  color: var(--c-blue-900);
+  line-height: 1.1;
+}
+.card-sub { font-size: var(--fs-sm); color: var(--c-gray-500); margin-top: 4px; }
+.card-accent { border-left: 4px solid var(--c-blue-700); }
+.card-accent.warn { border-left-color: var(--status-bridge); }
+.card-accent.danger { border-left-color: var(--c-red-600); }
+.card-accent.success { border-left-color: var(--status-online); }
+
+/* ── Section Container ────────────────────────────────── */
+.section {
+  background: var(--c-white);
+  border: 1px solid var(--grid-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-md) var(--sp-lg);
+  border-bottom: 1px solid var(--grid-border);
+  background: var(--grid-header-bg);
+}
+.section-title {
+  font-size: var(--fs-md-plus);
+  font-weight: var(--fw-semibold);
+  color: var(--c-blue-900);
+}
+.section-actions { display: flex; gap: var(--sp-sm); align-items: center; }
+
+/* ── Search & Filter Bar ──────────────────────────────── */
+.filter-bar {
+  display: flex; gap: var(--sp-sm); align-items: center;
+  padding: var(--sp-md) var(--sp-lg);
+  border-bottom: 1px solid var(--grid-border);
+}
+.textbox {
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  height: 2.25rem;
+  border: 1px solid var(--c-gray-400);
+  border-radius: var(--r-md);
+  padding: 0 var(--sp-md);
+  background: var(--c-white);
+  color: var(--c-gray-950);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.textbox:focus {
+  border-color: var(--c-blue-800);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(66,116,202,0.12);
+}
+.textbox.search { width: 220px; }
+.dropdown {
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  height: 2.25rem;
+  border: 1px solid var(--c-gray-400);
+  border-radius: var(--r-md);
+  padding: 0 var(--sp-md);
+  background: var(--c-white);
+  color: var(--c-gray-950);
+  outline: none;
+  cursor: pointer;
+}
+.dropdown:focus { border-color: var(--c-blue-800); border-width: 2px; }
+
+/* ── Grid / Table ─────────────────────────────────────── */
+.grid-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-md-plus);
+}
+thead th {
+  background: var(--grid-header-bg);
+  color: var(--grid-header-text);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-md-plus);
+  line-height: 20px;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 2px solid var(--grid-border);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+thead th:hover { background: #F0F1F2; }
+thead th .sort-icon { margin-left: 4px; font-size: 10px; opacity: 0.5; }
+thead th.sorted .sort-icon { opacity: 1; color: var(--c-blue-700); }
+tbody tr { transition: background 0.1s; }
+tbody tr:nth-child(even) td { background: var(--grid-row-stripe); }
+tbody tr:hover td { background: var(--grid-cell-hover); }
+tbody tr.selected td { background: var(--grid-cell-selected); }
+tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--grid-border);
+  color: var(--grid-cell-text);
+  font-size: var(--fs-md-plus);
+  line-height: 20px;
+}
+tbody td:first-child { font-weight: var(--fw-semibold); color: var(--c-blue-800); cursor: pointer; }
+tbody td:first-child:hover { text-decoration: underline; }
+
+/* Tags/Badges */
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.tag-critical  { background: #fde8ea; color: var(--c-red-600); }
+.tag-stable    { background: #e8f5e9; color: #2e7d32; }
+.tag-obs       { background: #fff3e0; color: #e65100; }
+.tag-pending   { background: #fff9c4; color: #f57f17; }
+.tag-bridge    { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+.tag-synced    { background: var(--c-blue-050); color: var(--c-blue-800); }
+
+/* Grid row actions */
+.row-actions { display: flex; gap: 4px; }
+
+/* ── Pagination ───────────────────────────────────────── */
+.pagination {
+  display: flex; align-items: center; gap: var(--sp-sm);
+  padding: var(--sp-md) var(--sp-lg);
+  border-top: 1px solid var(--grid-border);
+  background: #F8F9FA;
+  font-size: var(--fs-md-plus);
+  color: var(--c-gray-500);
+}
+.pag-btn {
+  border: 1px solid var(--grid-border);
+  border-radius: var(--r-md);
+  padding: 6px 12px;
+  background: var(--c-white);
+  cursor: pointer;
+  font-size: var(--fs-md-plus);
+  color: var(--c-gray-600);
+  font-family: var(--font);
+  transition: all 0.15s;
+}
+.pag-btn:hover { border-color: #B3D9FF; color: #0066CC; background: var(--c-gray-050); }
+.pag-btn.active { background: var(--c-blue-050); border-color: var(--c-blue-700); color: var(--c-blue-800); font-weight: var(--fw-semibold); }
+.pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Right Panel (Patient Detail) ────────────────────── */
+.detail-panel {
+  width: 360px;
+  background: var(--c-white);
+  border-left: 1px solid var(--grid-border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  transition: width 0.3s ease;
+}
+.detail-panel.collapsed { width: 0; overflow: hidden; }
+.detail-header {
+  padding: var(--sp-md) var(--sp-lg);
+  border-bottom: 1px solid var(--grid-border);
+  background: var(--grid-header-bg);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.detail-close { cursor: pointer; color: var(--c-gray-500); font-size: 18px; }
+.detail-close:hover { color: var(--c-gray-950); }
+.detail-section {
+  padding: var(--sp-md) var(--sp-lg);
+  border-bottom: 1px solid var(--grid-border);
+}
+.detail-section-label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--sp-sm);
+}
+.detail-field { margin-bottom: var(--sp-md); }
+.detail-field label {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--c-gray-600);
+  margin-bottom: 4px;
+}
+.detail-field .value {
+  font-size: var(--fs-md);
+  color: var(--c-gray-950);
+  font-weight: var(--fw-semibold);
+}
+.note-area {
+  width: 100%;
+  min-height: 80px;
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  border: 1px solid var(--c-gray-400);
+  border-radius: var(--r-md);
+  padding: var(--sp-sm) var(--sp-md);
+  color: var(--c-gray-950);
+  resize: vertical;
+  outline: none;
+}
+.note-area:focus { border-color: var(--c-blue-800); border-width: 2px; }
+
+.pending-indicator {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--fs-sm); color: #856404;
+  background: #fff3cd; border: 1px solid #ffc107;
+  border-radius: var(--r-sm); padding: 2px 8px;
+  margin-bottom: var(--sp-sm);
+}
+
+/* ── Modal / MessageBox ───────────────────────────────── */
+.modal-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+.modal-backdrop.visible { display: flex; }
+.modal {
+  background: var(--c-white);
+  border-radius: var(--r-lg);
+  box-shadow: 1px 2px 4px 0px rgba(13,13,13,0.25);
+  width: 480px; max-width: 90vw;
+  animation: slideUp 0.3s ease-out;
+}
+.modal-header {
+  padding: var(--sp-lg) var(--sp-lg) 0 var(--sp-lg);
+  display: flex; align-items: center; gap: var(--sp-md);
+}
+.modal-icon { width: 32px; height: 32px; font-size: 24px; }
+.modal-title { font-size: var(--fs-lg); color: var(--c-blue-900); }
+.modal-body {
+  padding: var(--sp-sm) var(--sp-lg) 0 68px;
+  min-height: 60px;
+  font-size: var(--fs-sm);
+  color: var(--c-gray-950);
+  line-height: 1.5;
+}
+.modal-footer {
+  padding: var(--sp-sm) var(--sp-lg) var(--sp-lg) var(--sp-lg);
+  display: flex; justify-content: flex-end; gap: var(--sp-sm);
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
+
+/* ── Sync Queue Panel ─────────────────────────────────── */
+.sync-queue {
+  border-left: 4px solid var(--status-bridge);
+}
+.queue-item {
+  display: flex; align-items: center; gap: var(--sp-md);
+  padding: 10px var(--sp-lg);
+  border-bottom: 1px solid var(--grid-border);
+  font-size: var(--fs-md);
+}
+.queue-item:last-child { border-bottom: none; }
+.queue-item-icon { font-size: 16px; flex-shrink: 0; }
+.queue-item-info { flex: 1; }
+.queue-item-patient { font-weight: var(--fw-semibold); color: var(--c-gray-950); }
+.queue-item-note { font-size: var(--fs-sm); color: var(--c-gray-500); }
+.queue-item-time { font-size: var(--fs-sm); color: var(--c-gray-400); }
+
+/* ── Toast notifications ──────────────────────────────── */
+.toast-area {
+  position: fixed; bottom: 20px; right: 20px;
+  z-index: 9999; display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  background: var(--c-gray-950);
+  color: var(--c-white);
+  font-size: var(--fs-md);
+  padding: 10px 16px;
+  border-radius: var(--r-lg);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  display: flex; align-items: center; gap: var(--sp-sm);
+  min-width: 240px;
+  animation: toastIn 0.3s ease-out;
+}
+.toast.success { background: #166534; border-left: 3px solid var(--status-online); }
+.toast.warn    { background: #92400e; border-left: 3px solid var(--status-bridge); }
+.toast.error   { background: #7f1d1d; border-left: 3px solid var(--c-red-600); }
+@keyframes toastIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
+
+/* ── Scrollbar ────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-gray-300, #ccc); border-radius: 3px; }
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 900px) {
+  .summary-cards { grid-template-columns: repeat(2, 1fr); }
+  .detail-panel { display: none; }
+  .sidebar { width: 56px; }
+  .nav-item span, .sidebar-section-label { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── Top Bar ───────────────────────────────────────── -->
+<header class="topbar">
+  <div class="topbar-logo">
+    🌉 Paragon Bridge
+    <span class="bridge-tag" id="modeTag">BRIDGE ACTIVE</span>
+  </div>
+
+  <div class="topbar-spacer"></div>
+
+  <div class="status-pill" id="statusPill">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">Bridge Mode</span>
+  </div>
+
+  <button class="mode-toggle" onclick="toggleMode()" title="Toggle Paragon status (POC demo)">
+    ⚡ Simulate Paragon
+  </button>
+
+  <div class="topbar-user">
+    <div class="topbar-user-avatar">DR</div>
+    <span>Dr. Rajan</span>
+  </div>
+</header>
+
+<!-- ─── App Body ─────────────────────────────────────── -->
+<div class="app-body">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Clinical</div>
+      <div class="nav-item active" onclick="setNav(this)">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Patients</span>
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>Orders</span>
+        <span class="nav-badge">3</span>
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Vitals</span>
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span>Medications</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Bridge</div>
+      <div class="nav-item" onclick="setNav(this); showSyncQueue()">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+        <span>Sync Queue</span>
+        <span class="nav-badge" id="queueBadge">2</span>
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Audit Log</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Panel -->
+  <main class="main" id="mainContent">
+
+    <!-- Bridge Banner -->
+    <div class="bridge-banner visible" id="bridgeBanner">
+      <span class="banner-icon">⚠️</span>
+      <div>
+        <strong>Paragon EHR is currently unavailable.</strong>
+        Paragon Bridge is active — you are connected to the Reporting Server.
+        All entries are queued for sync when Paragon comes back online.
+      </div>
+      <span class="banner-close" onclick="document.getElementById('bridgeBanner').classList.remove('visible')">✕</span>
+    </div>
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div>
+        <div class="page-title">Patient List</div>
+        <div class="page-subtitle" id="pageSubtitle">Reporting Server · Read/Write (Bridge Mode)</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="refreshList()">↺ Refresh</button>
+        <button class="btn btn-primary" onclick="openAddNote()">+ Add Entry</button>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+      <div class="card card-accent">
+        <div class="card-label">Total Patients</div>
+        <div class="card-value">18</div>
+        <div class="card-sub">On floor today</div>
+      </div>
+      <div class="card card-accent warn">
+        <div class="card-label">Pending Sync</div>
+        <div class="card-value" id="pendingCount">2</div>
+        <div class="card-sub">Awaiting Paragon</div>
+      </div>
+      <div class="card card-accent danger">
+        <div class="card-label">Critical</div>
+        <div class="card-value">3</div>
+        <div class="card-sub">Require attention</div>
+      </div>
+      <div class="card card-accent success">
+        <div class="card-label">Stable</div>
+        <div class="card-value">11</div>
+        <div class="card-sub">No alerts</div>
+      </div>
+    </div>
+
+    <!-- Patient Grid -->
+    <div class="section" id="patientSection">
+      <div class="section-header">
+        <div class="section-title">Patients — Floor 3B</div>
+        <div class="section-actions">
+          <span class="tag tag-bridge">⚡ Bridge Mode</span>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input class="textbox search" type="text" placeholder="Search by name or MRN…" oninput="filterPatients(this.value)"/>
+        <select class="dropdown" onchange="filterStatus(this.value)">
+          <option value="">All Status</option>
+          <option value="Critical">Critical</option>
+          <option value="Stable">Stable</option>
+          <option value="Observation">Observation</option>
+        </select>
+        <select class="dropdown" onchange="filterWard(this.value)">
+          <option value="">All Wards</option>
+          <option value="ICU">ICU</option>
+          <option value="General">General</option>
+          <option value="Surgical">Surgical</option>
+        </select>
+      </div>
+
+      <div class="grid-wrap">
+        <table id="patientTable">
+          <thead>
+            <tr>
+              <th onclick="sortBy('mrn')">MRN <span class="sort-icon">↕</span></th>
+              <th onclick="sortBy('name')">Patient Name <span class="sort-icon">↕</span></th>
+              <th onclick="sortBy('age')">Age <span class="sort-icon">↕</span></th>
+              <th onclick="sortBy('ward')">Ward <span class="sort-icon">↕</span></th>
+              <th onclick="sortBy('status')">Status <span class="sort-icon">↕</span></th>
+              <th onclick="sortBy('last')">Last Updated <span class="sort-icon">↕</span></th>
+              <th>Source</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="patientBody"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <span id="pagInfo">Showing 1–8 of 8 patients</span>
+        <div style="flex:1"></div>
+        <button class="pag-btn" disabled>‹ Prev</button>
+        <button class="pag-btn active">1</button>
+        <button class="pag-btn" disabled>Next ›</button>
+      </div>
+    </div>
+
+    <!-- Sync Queue (hidden initially) -->
+    <div class="section sync-queue" id="syncSection" style="display:none">
+      <div class="section-header">
+        <div class="section-title">⚡ Sync Queue — Pending Entries</div>
+        <div class="section-actions">
+          <button class="btn btn-primary" onclick="syncAll()" id="syncBtn">Sync All to Paragon</button>
+        </div>
+      </div>
+      <div id="queueBody"></div>
+    </div>
+
+  </main>
+
+  <!-- Detail Panel -->
+  <aside class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+      <div class="section-title" id="detailName">Patient Detail</div>
+      <span class="detail-close" onclick="closeDetail()">✕</span>
+    </div>
+    <div id="detailContent"></div>
+  </aside>
+
+</div>
+
+<!-- ─── Add Note Modal ───────────────────────────────── -->
+<div class="modal-backdrop" id="noteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-icon">📝</div>
+      <div class="modal-title">Add Clinical Entry</div>
+    </div>
+    <div class="modal-body" style="padding: 16px 24px;">
+      <div style="margin-bottom:12px; padding:8px 12px; background:#fff3cd; border-radius:4px; font-size:12px; color:#856404; border:1px solid #ffc107;">
+        ⚡ This entry will be saved optimistically to the Reporting Server and synced to Paragon when it comes back online.
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div>
+          <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Patient</label>
+          <select class="dropdown" style="width:100%" id="modalPatient">
+            <option>Select patient…</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Entry Type</label>
+          <select class="dropdown" style="width:100%">
+            <option>Clinical Note</option>
+            <option>Order</option>
+            <option>Vital Sign</option>
+            <option>Medication Update</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Note</label>
+          <textarea class="note-area" id="modalNote" placeholder="Enter clinical note…" style="width:100%"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEntry()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Sync Confirm Modal ───────────────────────────── -->
+<div class="modal-backdrop" id="syncModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-icon">🔄</div>
+      <div class="modal-title">Confirm Data Sync</div>
+    </div>
+    <div class="modal-body">
+      Paragon is back online. Please review and validate the queued entries before they are posted to the main EHR.
+      This action requires your approval as the responsible provider.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('syncModal').classList.remove('visible')">Review Later</button>
+      <button class="btn btn-primary" onclick="confirmSync()">Validate & Sync</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toast Area ───────────────────────────────────── -->
+<div class="toast-area" id="toastArea"></div>
+
+<script>
+/* ── Data ────────────────────────────────────────────── */
+let isParagonOnline = false;
+let syncQueue = [];
+let selectedPatient = null;
+let sortCol = 'name', sortDir = 1;
+let searchTerm = '', filterSt = '', filterWd = '';
+
+const patients = [
+  { mrn:'MRN-001', name:'Arjun Mehta',     age:54, ward:'ICU',      status:'Critical',    last:'10:42 AM', source:'reporting', pending: false },
+  { mrn:'MRN-002', name:'Priya Sharma',    age:38, ward:'General',  status:'Stable',      last:'09:15 AM', source:'reporting', pending: false },
+  { mrn:'MRN-003', name:'Ratan Desai',     age:67, ward:'Surgical', status:'Observation', last:'11:00 AM', source:'reporting', pending: true  },
+  { mrn:'MRN-004', name:'Ananya Iyer',     age:29, ward:'General',  status:'Stable',      last:'08:30 AM', source:'reporting', pending: false },
+  { mrn:'MRN-005', name:'Kiran Patel',     age:73, ward:'ICU',      status:'Critical',    last:'11:22 AM', source:'reporting', pending: false },
+  { mrn:'MRN-006', name:'Neha Kulkarni',   age:45, ward:'Surgical', status:'Stable',      last:'10:05 AM', source:'reporting', pending: true  },
+  { mrn:'MRN-007', name:'Vikram Nair',     age:61, ward:'General',  status:'Observation', last:'09:50 AM', source:'reporting', pending: false },
+  { mrn:'MRN-008', name:'Smita Joshi',     age:52, ward:'ICU',      status:'Critical',    last:'11:35 AM', source:'reporting', pending: false },
+];
+
+syncQueue = [
+  { id:1, mrn:'MRN-003', patient:'Ratan Desai',  type:'Clinical Note', note:'Post-op vitals stable. Continue monitoring. BP 118/76.', time:'11:00 AM', validated:false },
+  { id:2, mrn:'MRN-006', patient:'Neha Kulkarni', type:'Medication Update', note:'Dose adjusted to 250mg twice daily per consult.', time:'10:05 AM', validated:false },
+];
+
+/* ── Init ────────────────────────────────────────────── */
+window.onload = () => {
+  updateStatus();
+  renderTable();
+  renderQueue();
+  populateModalPatients();
+};
+
+/* ── Mode Toggle ─────────────────────────────────────── */
+function toggleMode() {
+  isParagonOnline = !isParagonOnline;
+  updateStatus();
+  if (isParagonOnline && syncQueue.length > 0) {
+    setTimeout(() => document.getElementById('syncModal').classList.add('visible'), 600);
+  }
+}
+
+function updateStatus() {
+  const pill = document.getElementById('statusPill');
+  const dot  = document.getElementById('statusDot');
+  const txt  = document.getElementById('statusText');
+  const tag  = document.getElementById('modeTag');
+  const banner = document.getElementById('bridgeBanner');
+  const subtitle = document.getElementById('pageSubtitle');
+
+  pill.className = 'status-pill';
+  dot.className = 'status-dot';
+
+  if (isParagonOnline) {
+    pill.classList.add('online');
+    dot.classList.add('online');
+    txt.textContent = 'Paragon Online';
+    tag.textContent = 'CONNECTED';
+    tag.style.background = 'rgba(34,197,94,0.25)';
+    banner.classList.remove('visible');
+    subtitle.textContent = 'Paragon EHR · Live Connection';
+    toast('✅ Paragon EHR is back online!', 'success');
+  } else {
+    pill.classList.add('bridge');
+    dot.classList.add('bridge');
+    txt.textContent = 'Bridge Mode';
+    tag.textContent = 'BRIDGE ACTIVE';
+    tag.style.background = '';
+    banner.classList.add('visible');
+    subtitle.textContent = 'Reporting Server · Read/Write (Bridge Mode)';
+    toast('⚡ Paragon offline — Bridge activated', 'warn');
+  }
+}
+
+/* ── Table ───────────────────────────────────────────── */
+function renderTable() {
+  const tbody = document.getElementById('patientBody');
+  let rows = patients.filter(p => {
+    const q = searchTerm.toLowerCase();
+    const matchQ  = !q || p.name.toLowerCase().includes(q) || p.mrn.toLowerCase().includes(q);
+    const matchSt = !filterSt || p.status === filterSt;
+    const matchWd = !filterWd || p.ward === filterWd;
+    return matchQ && matchSt && matchWd;
+  });
+  rows.sort((a,b) => {
+    let v1 = a[sortCol], v2 = b[sortCol];
+    if (typeof v1 === 'string') { v1=v1.toLowerCase(); v2=v2.toLowerCase(); }
+    return v1 < v2 ? -sortDir : v1 > v2 ? sortDir : 0;
+  });
+  document.getElementById('pagInfo').textContent = `Showing 1–${rows.length} of ${rows.length} patients`;
+  tbody.innerHTML = rows.map(p => `
+    <tr onclick="selectPatient('${p.mrn}')" class="${selectedPatient === p.mrn ? 'selected' : ''}">
+      <td onclick="openDetail('${p.mrn}'); event.stopPropagation()">${p.mrn}</td>
+      <td>${p.name}</td>
+      <td>${p.age}</td>
+      <td>${p.ward}</td>
+      <td><span class="tag ${tagClass(p.status)}">${p.status}</span></td>
+      <td>${p.last}</td>
+      <td>${p.pending
+        ? '<span class="tag tag-bridge">⏳ Pending</span>'
+        : '<span class="tag tag-synced">✔ Reporting</span>'}</td>
+      <td><div class="row-actions">
+        <button class="btn btn-sm btn-secondary" onclick="openDetail('${p.mrn}'); event.stopPropagation()">View</button>
+        <button class="btn btn-sm btn-primary" onclick="quickNote('${p.mrn}'); event.stopPropagation()">Note</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function tagClass(status) {
+  return { Critical:'tag-critical', Stable:'tag-stable', Observation:'tag-obs' }[status] || '';
+}
+
+function filterPatients(v) { searchTerm = v; renderTable(); }
+function filterStatus(v)   { filterSt = v; renderTable(); }
+function filterWard(v)     { filterWd = v; renderTable(); }
+function selectPatient(mrn){ selectedPatient = selectedPatient === mrn ? null : mrn; renderTable(); }
+function refreshList()     { toast('↺ Refreshed from Reporting Server', 'success'); }
+
+function sortBy(col) {
+  if (sortCol === col) sortDir = -sortDir; else { sortCol = col; sortDir = 1; }
+  document.querySelectorAll('thead th').forEach(th => th.classList.remove('sorted'));
+  event.currentTarget.classList.add('sorted');
+  renderTable();
+}
+
+/* ── Detail Panel ────────────────────────────────────── */
+function openDetail(mrn) {
+  const p = patients.find(x => x.mrn === mrn);
+  if (!p) return;
+  document.getElementById('detailName').textContent = p.name;
+  const q = syncQueue.find(q => q.mrn === mrn);
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-section">
+      <div class="detail-section-label">Demographics</div>
+      <div class="detail-field"><label>MRN</label><div class="value">${p.mrn}</div></div>
+      <div class="detail-field"><label>Age</label><div class="value">${p.age} years</div></div>
+      <div class="detail-field"><label>Ward</label><div class="value">${p.ward}</div></div>
+      <div class="detail-field"><label>Status</label><div class="value"><span class="tag ${tagClass(p.status)}">${p.status}</span></div></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-label">Current Vitals</div>
+      <div class="detail-field"><label>Blood Pressure</label><div class="value">118 / 76 mmHg</div></div>
+      <div class="detail-field"><label>Heart Rate</label><div class="value">82 bpm</div></div>
+      <div class="detail-field"><label>Temperature</label><div class="value">98.6 °F</div></div>
+      <div class="detail-field"><label>SpO2</label><div class="value">97%</div></div>
+    </div>
+    ${q ? `<div class="detail-section">
+      <div class="detail-section-label">Pending Entry</div>
+      <div class="pending-indicator">⚡ Queued for Sync</div>
+      <div class="detail-field"><label>Type</label><div class="value">${q.type}</div></div>
+      <div class="detail-field"><label>Note</label><div class="value" style="font-size:12px; color:#555;">${q.note}</div></div>
+      <div class="detail-field"><label>Time</label><div class="value">${q.time}</div></div>
+    </div>` : ''}
+    <div class="detail-section">
+      <div class="detail-section-label">Add Note</div>
+      <div style="margin-bottom:8px; font-size:12px; color:#856404; background:#fff3cd; padding:6px 10px; border-radius:4px; border:1px solid #ffc107;">
+        ⚡ Saved to Reporting Server — synced on Paragon recovery
+      </div>
+      <textarea class="note-area" id="quickNoteText" placeholder="Enter clinical note for ${p.name}…" style="width:100%; margin-bottom:8px;"></textarea>
+      <button class="btn btn-primary" style="width:100%" onclick="saveQuickNote('${mrn}')">Save Note</button>
+    </div>`;
+  document.getElementById('detailPanel').classList.remove('collapsed');
+}
+function closeDetail() { document.getElementById('detailPanel').classList.add('collapsed'); }
+
+/* ── Sync Queue ──────────────────────────────────────── */
+function showSyncQueue() {
+  const sec = document.getElementById('syncSection');
+  sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+}
+function renderQueue() {
+  const body = document.getElementById('queueBody');
+  if (!syncQueue.length) {
+    body.innerHTML = '<div style="padding:20px; text-align:center; color:#666; font-size:13px;">✅ No pending entries — all synced to Paragon.</div>';
+    return;
+  }
+  body.innerHTML = syncQueue.map(q => `
+    <div class="queue-item">
+      <div class="queue-item-icon">📝</div>
+      <div class="queue-item-info">
+        <div class="queue-item-patient">${q.patient} <span style="color:#999; font-size:12px;">${q.mrn}</span></div>
+        <div class="queue-item-note">${q.type} — ${q.note.substring(0,60)}…</div>
+      </div>
+      <div class="queue-item-time">${q.time}</div>
+      <button class="btn btn-sm btn-secondary" onclick="removeQueueItem(${q.id})">Discard</button>
+    </div>`).join('');
+  document.getElementById('queueBadge').textContent = syncQueue.length;
+  document.getElementById('pendingCount').textContent = syncQueue.length;
+}
+
+function removeQueueItem(id) {
+  syncQueue = syncQueue.filter(q => q.id !== id);
+  patients.forEach(p => { if (!syncQueue.find(q => q.mrn === p.mrn)) p.pending = false; });
+  renderQueue(); renderTable();
+  document.getElementById('queueBadge').textContent = syncQueue.length;
+  document.getElementById('pendingCount').textContent = syncQueue.length;
+}
+
+function syncAll() {
+  if (!isParagonOnline) {
+    toast('❌ Paragon is still offline. Cannot sync yet.', 'error');
+    return;
+  }
+  document.getElementById('syncModal').classList.add('visible');
+}
+
+function confirmSync() {
+  document.getElementById('syncModal').classList.remove('visible');
+  syncQueue = [];
+  patients.forEach(p => p.pending = false);
+  renderQueue(); renderTable();
+  document.getElementById('queueBadge').textContent = '0';
+  document.getElementById('pendingCount').textContent = '0';
+  toast('✅ All entries validated and synced to Paragon EHR!', 'success');
+}
+
+/* ── Modals & Notes ──────────────────────────────────── */
+function openAddNote() {
+  document.getElementById('noteModal').classList.add('visible');
+}
+function closeModal() {
+  document.getElementById('noteModal').classList.remove('visible');
+}
+function populateModalPatients() {
+  const sel = document.getElementById('modalPatient');
+  patients.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.mrn;
+    opt.textContent = `${p.name} (${p.mrn})`;
+    sel.appendChild(opt);
+  });
+}
+function quickNote(mrn) {
+  openDetail(mrn);
+  setTimeout(() => document.getElementById('quickNoteText')?.focus(), 100);
+}
+function saveQuickNote(mrn) {
+  const note = document.getElementById('quickNoteText')?.value?.trim();
+  if (!note) { toast('Please enter a note.', 'error'); return; }
+  const p = patients.find(x => x.mrn === mrn);
+  const now = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const entry = { id: Date.now(), mrn, patient: p.name, type:'Clinical Note', note, time: now, validated: false };
+  syncQueue.push(entry);
+  p.pending = true;
+  p.last = now;
+  renderQueue(); renderTable();
+  document.getElementById('queueBadge').textContent = syncQueue.length;
+  document.getElementById('pendingCount').textContent = syncQueue.length;
+  toast(`📝 Note saved for ${p.name} — queued for sync`, 'success');
+  closeDetail();
+}
+function saveEntry() {
+  const sel = document.getElementById('modalPatient');
+  const note = document.getElementById('modalNote')?.value?.trim();
+  if (!sel.value || sel.value === 'Select patient…') { toast('Please select a patient.', 'error'); return; }
+  if (!note) { toast('Please enter a note.', 'error'); return; }
+  const mrn = sel.value;
+  const p = patients.find(x => x.mrn === mrn);
+  const now = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  syncQueue.push({ id: Date.now(), mrn, patient: p.name, type:'Clinical Note', note, time: now, validated:false });
+  p.pending = true; p.last = now;
+  renderQueue(); renderTable();
+  document.getElementById('queueBadge').textContent = syncQueue.length;
+  document.getElementById('pendingCount').textContent = syncQueue.length;
+  closeModal();
+  document.getElementById('modalNote').value = '';
+  toast(`📝 Entry saved for ${p.name} — queued for sync`, 'success');
+}
+
+function setNav(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ── Toast ───────────────────────────────────────────── */
+function toast(msg, type='') {
+  const area = document.getElementById('toastArea');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = msg;
+  area.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(),300); }, 3500);
+}
+
+/* Close modal on backdrop click */
+document.querySelectorAll('.modal-backdrop').forEach(b => {
+  b.addEventListener('click', e => { if (e.target === b) b.classList.remove('visible'); });
+});
+</script>
+</body>
+</html>
